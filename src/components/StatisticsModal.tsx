@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,18 +12,67 @@ interface StatisticsModalProps {
 }
 
 const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, strategy }) => {
-  const [zoom, setZoom] = useState(100);
+  const [zoom, setZoom] = useState(1);
   const [currentImage, setCurrentImage] = useState(0);
+  const [posX, setPosX] = useState(0);
+  const [posY, setPosY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50));
-  const handleResetZoom = () => setZoom(100);
+  const images = strategy ? [
+    `./img/estatisticas/${strategy.magic}_1.png`,
+    `./img/estatisticas/${strategy.magic}_2.png`,
+    `./img/estatisticas/${strategy.magic}_3.png`
+  ] : [];
 
-  const mockImages = [
-    '/placeholder.svg',
-    '/placeholder.svg',
-    '/placeholder.svg'
-  ];
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.2, 1));
+    if (zoom <= 1.2) {
+      setPosX(0);
+      setPosY(0);
+    }
+  };
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPosX(0);
+    setPosY(0);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    setIsDragging(true);
+    setStartX(e.clientX - posX);
+    setStartY(e.clientY - posY);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || zoom <= 1) return;
+    
+    const newX = e.clientX - startX;
+    const newY = e.clientY - startY;
+    
+    setPosX(newX);
+    setPosY(newY);
+  };
+
+  const resetImageState = () => {
+    setZoom(1);
+    setPosX(0);
+    setPosY(0);
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      resetImageState();
+    }
+  }, [isOpen, currentImage]);
 
   if (!strategy) return null;
 
@@ -32,8 +81,8 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
       <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${strategy.color}`} />
-            Estatísticas - {strategy.name}
+            <div className="text-2xl">📷</div>
+            Estatísticas: Magic {strategy.magic}
           </DialogTitle>
         </DialogHeader>
         
@@ -42,13 +91,13 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
           <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="text-2xl font-bold text-emerald-600">
-                {strategy.lucroTotal.toFixed(1)}%
+                {strategy.lucroTotal.toFixed(2)}
               </div>
               <div className="text-sm text-gray-500">Lucro Total</div>
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">
-                {strategy.assertividade}%
+                {strategy.assertividade.toFixed(1)}%
               </div>
               <div className="text-sm text-gray-500">Assertividade</div>
             </div>
@@ -59,10 +108,10 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
               <div className="text-sm text-gray-500">Operações</div>
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">
-                {(strategy.lucroTotal / strategy.operacoes).toFixed(2)}%
+              <div className="text-2xl font-bold text-green-600">
+                {strategy.vencedoras}
               </div>
-              <div className="text-sm text-gray-500">Lucro/Op</div>
+              <div className="text-sm text-gray-500">Vencedoras</div>
             </div>
           </div>
 
@@ -73,18 +122,18 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
                 variant="outline"
                 size="sm"
                 onClick={handleZoomOut}
-                disabled={zoom <= 50}
+                disabled={zoom <= 1}
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
               <span className="text-sm text-gray-500 min-w-[60px] text-center">
-                {zoom}%
+                {Math.round(zoom * 100)}%
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleZoomIn}
-                disabled={zoom >= 200}
+                disabled={zoom >= 3}
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
@@ -98,18 +147,32 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
             </div>
             
             <Badge variant="secondary">
-              {currentImage + 1} de {mockImages.length}
+              {currentImage + 1} de {images.length}
             </Badge>
           </div>
 
           {/* Imagem com Zoom */}
-          <div className="mb-4 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-96 overflow-auto">
-            <div className="flex justify-center">
+          <div 
+            className="mb-4 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-96 overflow-hidden relative cursor-grab"
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseUp}
+          >
+            <div className="flex justify-center items-center h-full">
               <img
-                src={mockImages[currentImage]}
+                src={images[currentImage]}
                 alt={`Estatística ${currentImage + 1}`}
-                style={{ transform: `scale(${zoom / 100})` }}
-                className="max-w-full h-auto transition-transform duration-200"
+                style={{ 
+                  transform: `translate(${posX}px, ${posY}px) scale(${zoom})`,
+                  cursor: isDragging ? 'grabbing' : zoom > 1 ? 'grab' : 'default'
+                }}
+                className="max-w-full h-auto transition-transform duration-200 select-none"
+                draggable={false}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
               />
             </div>
           </div>
@@ -118,7 +181,9 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
           <div className="flex items-center justify-between">
             <Button
               variant="outline"
-              onClick={() => setCurrentImage(prev => Math.max(0, prev - 1))}
+              onClick={() => {
+                setCurrentImage(prev => Math.max(0, prev - 1));
+              }}
               disabled={currentImage === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -126,7 +191,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
             </Button>
             
             <div className="flex gap-2">
-              {mockImages.map((_, index) => (
+              {images.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImage(index)}
@@ -141,8 +206,10 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
             
             <Button
               variant="outline"
-              onClick={() => setCurrentImage(prev => Math.min(mockImages.length - 1, prev + 1))}
-              disabled={currentImage === mockImages.length - 1}
+              onClick={() => {
+                setCurrentImage(prev => Math.min(images.length - 1, prev + 1));
+              }}
+              disabled={currentImage === images.length - 1}
             >
               Próxima
               <ChevronRight className="h-4 w-4 ml-1" />

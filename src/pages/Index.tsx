@@ -1,114 +1,117 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, CheckCircle, BarChart3, Moon, Sun, Plus, Filter, X } from 'lucide-react';
+import { Search, TrendingUp, CheckCircle, BarChart3, Moon, Sun, Plus, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StrategyCard from '@/components/StrategyCard';
 import ChartModal from '@/components/ChartModal';
 import StatisticsModal from '@/components/StatisticsModal';
+import { useStrategies } from '@/hooks/useStrategies';
 
 const Index = () => {
+  const { strategies, loading, error, loadHistorico, formatarData } = useStrategies();
   const [darkMode, setDarkMode] = useState(false);
   const [filtro, setFiltro] = useState('');
   const [ordenacao, setOrdenacao] = useState('lucro_total');
-  const [selectedStrategy, setSelectedStrategy] = useState(null);
+  const [selectedStrategy, setSelectedStrategy] = useState<any>(null);
   const [showChart, setShowChart] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
-  // Dados mockados das estratégias
-  const [strategies] = useState([
-    {
-      id: 1,
-      name: 'Magic Formula',
-      symbol: 'PETR4',
-      lucroTotal: 25.8,
-      assertividade: 78,
-      operacoes: 142,
-      status: 'active',
-      color: 'bg-emerald-500'
-    },
-    {
-      id: 2,
-      name: 'Momentum',
-      symbol: 'VALE3',
-      lucroTotal: 18.5,
-      assertividade: 65,
-      operacoes: 98,
-      status: 'active',
-      color: 'bg-blue-500'
-    },
-    {
-      id: 3,
-      name: 'Value Investing',
-      symbol: 'ITUB4',
-      lucroTotal: 31.2,
-      assertividade: 82,
-      operacoes: 76,
-      status: 'paused',
-      color: 'bg-purple-500'
-    },
-    {
-      id: 4,
-      name: 'Growth Strategy',
-      symbol: 'MGLU3',
-      lucroTotal: 12.3,
-      assertividade: 59,
-      operacoes: 124,
-      status: 'active',
-      color: 'bg-orange-500'
-    },
-    {
-      id: 5,
-      name: 'Dividend Yield',
-      symbol: 'BBDC4',
-      lucroTotal: 22.1,
-      assertividade: 71,
-      operacoes: 89,
-      status: 'active',
-      color: 'bg-teal-500'
-    },
-    {
-      id: 6,
-      name: 'Swing Trade',
-      symbol: 'WEGE3',
-      lucroTotal: 16.7,
-      assertividade: 68,
-      operacoes: 156,
-      status: 'active',
-      color: 'bg-indigo-500'
-    }
-  ]);
-
-  const filteredStrategies = strategies
-    .filter(strategy => 
-      strategy.name.toLowerCase().includes(filtro.toLowerCase()) ||
-      strategy.symbol.toLowerCase().includes(filtro.toLowerCase())
-    )
-    .sort((a, b) => {
-      switch(ordenacao) {
-        case 'lucro_total': return b.lucroTotal - a.lucroTotal;
-        case 'assertividade': return b.assertividade - a.assertividade;
-        case 'operacoes': return b.operacoes - a.operacoes;
-        default: return 0;
-      }
-    });
-
-  const totalLucro = strategies.reduce((sum, s) => sum + s.lucroTotal, 0);
-  const mediaAssertividade = strategies.reduce((sum, s) => sum + s.assertividade, 0) / strategies.length;
-  const totalOperacoes = strategies.reduce((sum, s) => sum + s.operacoes, 0);
-
+  // Carregar tema salvo
   useEffect(() => {
+    const temaSalvo = localStorage.getItem("temaEscolhido") || "tema-escuro";
+    const isDark = temaSalvo === "tema-escuro";
+    setDarkMode(isDark);
+    
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  // Salvar tema
+  useEffect(() => {
+    const novoTema = darkMode ? "tema-escuro" : "tema-claro";
+    localStorage.setItem("temaEscolhido", novoTema);
+    
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Função para ordenar estratégias
+  const ordenarEstrategias = (lista: any[]) => {
+    const copia = [...lista];
+    switch(ordenacao) {
+      case 'assertividade': 
+        return copia.sort((a, b) => b.assertividade - a.assertividade);
+      case 'operacoes': 
+        return copia.sort((a, b) => b.total_operacoes - a.total_operacoes);
+      case 'data': 
+        return copia.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+      default: 
+        return copia.sort((a, b) => b.lucro_total - a.lucro_total);
+    }
+  };
+
+  // Filtrar e ordenar estratégias
+  const filteredStrategies = ordenarEstrategias(
+    strategies.filter(strategy => 
+      strategy.magic.toString().includes(filtro.toLowerCase()) ||
+      (strategy.ativo || '').toLowerCase().includes(filtro.toLowerCase())
+    )
+  );
+
+  // Calcular estatísticas
+  const totalLucro = strategies.reduce((sum, s) => sum + s.lucro_total, 0);
+  const mediaAssertividade = strategies.length > 0 
+    ? strategies.reduce((sum, s) => sum + s.assertividade, 0) / strategies.length 
+    : 0;
+  const totalOperacoes = strategies.reduce((sum, s) => sum + s.total_operacoes, 0);
+
+  const handleViewChart = async (strategy: any) => {
+    try {
+      const historicoData = await loadHistorico(strategy.magic);
+      setSelectedStrategy({ ...strategy, historicoData });
+      setShowChart(true);
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error);
+    }
+  };
+
+  const handleViewStats = (strategy: any) => {
+    setSelectedStrategy(strategy);
+    setShowStats(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Carregando estratégias...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
@@ -124,7 +127,6 @@ const Index = () => {
             </p>
           </div>
           
-          {/* Theme Toggle */}
           <Button
             variant="outline"
             size="icon"
@@ -145,7 +147,7 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{totalLucro.toFixed(1)}%</div>
+              <div className="text-3xl font-bold">{totalLucro.toFixed(2)}</div>
               <p className="text-emerald-100 text-sm">Acumulado em todas as estratégias</p>
             </CardContent>
           </Card>
@@ -158,7 +160,7 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{mediaAssertividade.toFixed(0)}%</div>
+              <div className="text-3xl font-bold">{mediaAssertividade.toFixed(1)}%</div>
               <p className="text-blue-100 text-sm">Taxa de sucesso das operações</p>
             </CardContent>
           </Card>
@@ -184,7 +186,7 @@ const Index = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="🔍 Buscar por estratégia ou ativo..."
+                  placeholder="🔍 Buscar por Magic ou Ativo..."
                   value={filtro}
                   onChange={(e) => setFiltro(e.target.value)}
                   className="pl-10"
@@ -200,14 +202,10 @@ const Index = () => {
                   <SelectItem value="lucro_total">📈 Lucro Total</SelectItem>
                   <SelectItem value="assertividade">✅ Assertividade</SelectItem>
                   <SelectItem value="operacoes">📊 Operações</SelectItem>
+                  <SelectItem value="data">📅 Data</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Estratégia
-            </Button>
           </div>
         </div>
 
@@ -215,16 +213,23 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredStrategies.map((strategy) => (
             <StrategyCard
-              key={strategy.id}
-              strategy={strategy}
-              onViewChart={() => {
-                setSelectedStrategy(strategy);
-                setShowChart(true);
+              key={strategy.magic}
+              strategy={{
+                id: strategy.magic,
+                name: `Magic ${strategy.magic}`,
+                symbol: strategy.ativo,
+                lucroTotal: strategy.lucro_total,
+                assertividade: strategy.assertividade,
+                operacoes: strategy.total_operacoes,
+                status: 'active',
+                color: 'bg-emerald-500',
+                inicio: formatarData(strategy.inicio),
+                vencedoras: strategy.vencedoras,
+                perdedoras: strategy.perdedoras,
+                magic: strategy.magic
               }}
-              onViewStats={() => {
-                setSelectedStrategy(strategy);
-                setShowStats(true);
-              }}
+              onViewChart={() => handleViewChart(strategy)}
+              onViewStats={() => handleViewStats(strategy)}
             />
           ))}
         </div>
@@ -237,7 +242,7 @@ const Index = () => {
               Nenhuma estratégia encontrada
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Tente ajustar seus filtros ou criar uma nova estratégia
+              Tente ajustar seus filtros ou aguarde o carregamento
             </p>
             <Button variant="outline" onClick={() => setFiltro('')}>
               Limpar Filtros

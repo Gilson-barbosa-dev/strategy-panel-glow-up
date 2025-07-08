@@ -1,6 +1,5 @@
 
 import React, { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -14,60 +13,106 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (isOpen && strategy && canvasRef.current) {
-      // Simular dados do gráfico
+    if (isOpen && strategy && strategy.historicoData && canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
         // Limpar canvas
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         
-        // Configurar canvas
         const width = canvasRef.current.width;
         const height = canvasRef.current.height;
         
-        // Desenhar gráfico de linha simples
-        ctx.strokeStyle = strategy.color.replace('bg-', '').replace('-500', '');
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        
-        // Gerar dados mockados
-        const dataPoints = 20;
-        const baseValue = strategy.lucroTotal;
-        
-        for (let i = 0; i < dataPoints; i++) {
-          const x = (i / (dataPoints - 1)) * width;
-          const variance = (Math.random() - 0.5) * 10;
-          const y = height / 2 + (baseValue + variance) * 2;
+        // Processar dados do histórico
+        const labels: string[] = [];
+        const lucroAcumulado: number[] = [];
+        let acumulado = 0;
+
+        for (const item of strategy.historicoData) {
+          let lucro = parseFloat(
+            typeof item.lucro_total === "string" 
+              ? item.lucro_total.replace(",", ".") 
+              : item.lucro_total
+          );
+          if (isNaN(lucro)) lucro = 0;
           
-          if (i === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
+          labels.push(item.data);
+          acumulado += lucro;
+          lucroAcumulado.push(acumulado);
+        }
+
+        const hasDados = labels.length > 0 && lucroAcumulado.some(l => l !== 0);
+        
+        if (hasDados) {
+          // Determinar tema
+          const temaEscuro = document.documentElement.classList.contains('dark');
+          const corTexto = temaEscuro ? "#ffffff" : "#111111";
+          const corLinha = temaEscuro ? "#00ffb3" : "#00b89c";
+          
+          // Configurar fundo
+          ctx.fillStyle = temaEscuro ? '#0e0e0e' : '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          
+          // Desenhar grid
+          ctx.strokeStyle = temaEscuro ? '#333333' : '#e5e7eb';
+          ctx.lineWidth = 1;
+          
+          // Linhas horizontais
+          for (let i = 0; i <= 5; i++) {
+            const y = (i / 5) * height;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
           }
-        }
-        
-        ctx.stroke();
-        
-        // Adicionar grid
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 1;
-        
-        // Linhas horizontais
-        for (let i = 0; i <= 5; i++) {
-          const y = (i / 5) * height;
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(width, y);
-          ctx.stroke();
-        }
-        
-        // Linhas verticais
-        for (let i = 0; i <= 10; i++) {
-          const x = (i / 10) * width;
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, height);
-          ctx.stroke();
+          
+          // Linhas verticais
+          for (let i = 0; i <= 10; i++) {
+            const x = (i / 10) * width;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+
+          // Desenhar linha do gráfico
+          if (lucroAcumulado.length > 0) {
+            const minLucro = Math.min(...lucroAcumulado);
+            const maxLucro = Math.max(...lucroAcumulado);
+            const range = maxLucro - minLucro || 1;
+            
+            ctx.strokeStyle = corLinha;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let i = 0; i < lucroAcumulado.length; i++) {
+              const x = (i / (lucroAcumulado.length - 1)) * width;
+              const y = height - ((lucroAcumulado[i] - minLucro) / range) * height;
+              
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            ctx.stroke();
+            
+            // Adicionar pontos
+            ctx.fillStyle = corLinha;
+            for (let i = 0; i < lucroAcumulado.length; i++) {
+              const x = (i / (lucroAcumulado.length - 1)) * width;
+              const y = height - ((lucroAcumulado[i] - minLucro) / range) * height;
+              
+              ctx.beginPath();
+              ctx.arc(x, y, 4, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+        } else {
+          // Sem dados
+          ctx.fillStyle = '#999999';
+          ctx.font = '20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Nenhum dado disponível', width / 2, height / 2);
         }
       }
     }
@@ -80,8 +125,8 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${strategy.color}`} />
-            Gráfico de Lucro - {strategy.name}
+            <div className="text-2xl">📊</div>
+            Histórico: Magic {strategy.magic}
           </DialogTitle>
         </DialogHeader>
         
@@ -89,13 +134,13 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
           <div className="mb-4 grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-emerald-600">
-                {strategy.lucroTotal.toFixed(1)}%
+                {strategy.lucroTotal.toFixed(2)}
               </div>
-              <div className="text-sm text-gray-500">Lucro Atual</div>
+              <div className="text-sm text-gray-500">Lucro Total</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-blue-600">
-                {strategy.assertividade}%
+                {strategy.assertividade.toFixed(1)}%
               </div>
               <div className="text-sm text-gray-500">Assertividade</div>
             </div>
