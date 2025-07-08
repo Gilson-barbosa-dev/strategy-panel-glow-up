@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, CheckCircle, BarChart3, Moon, Sun, Plus, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import StrategyCard from '@/components/StrategyCard';
+import { useStrategies } from '@/hooks/useStrategies';
+import PageHeader from '@/components/PageHeader';
+import SummaryCards from '@/components/SummaryCards';
+import FilterControls from '@/components/FilterControls';
+import StrategyGrid from '@/components/StrategyGrid';
+import EmptyState from '@/components/EmptyState';
+import LoadingState from '@/components/LoadingState';
+import ErrorState from '@/components/ErrorState';
 import ChartModal from '@/components/ChartModal';
 import StatisticsModal from '@/components/StatisticsModal';
-import { useStrategies } from '@/hooks/useStrategies';
 
 const Index = () => {
   const { strategies, loading, error, loadHistorico, formatarData } = useStrategies();
@@ -89,168 +90,51 @@ const Index = () => {
     setShowStats(true);
   };
 
+  const handleClearFilters = () => {
+    setFiltro('');
+  };
+
+  const handleRetry = () => {
+    window.location.reload();
+  };
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Carregando estratégias...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Tentar novamente
-          </Button>
-        </div>
-      </div>
-    );
+    return <ErrorState error={error} onRetry={handleRetry} />;
   }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
-          <div className="mb-6 lg:mb-0">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Painel de Estratégias
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Gerencie e monitore suas estratégias de investimento
-            </p>
-          </div>
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setDarkMode(!darkMode)}
-            className="self-start lg:self-center"
-          >
-            {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-        </div>
+        <PageHeader darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />
+        
+        <SummaryCards
+          totalLucro={totalLucro}
+          mediaAssertividade={mediaAssertividade}
+          totalOperacoes={totalOperacoes}
+        />
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Lucro Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalLucro.toFixed(2)}</div>
-              <p className="text-emerald-100 text-sm">Acumulado em todas as estratégias</p>
-            </CardContent>
-          </Card>
+        <FilterControls
+          filtro={filtro}
+          onFiltroChange={setFiltro}
+          ordenacao={ordenacao}
+          onOrdenacaoChange={setOrdenacao}
+        />
 
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Assertividade Média
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{mediaAssertividade.toFixed(1)}%</div>
-              <p className="text-blue-100 text-sm">Taxa de sucesso das operações</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Total de Operações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalOperacoes}</div>
-              <p className="text-purple-100 text-sm">Operações realizadas</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Controls */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="🔍 Buscar por Magic ou Ativo..."
-                  value={filtro}
-                  onChange={(e) => setFiltro(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <Select value={ordenacao} onValueChange={setOrdenacao}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lucro_total">📈 Lucro Total</SelectItem>
-                  <SelectItem value="assertividade">✅ Assertividade</SelectItem>
-                  <SelectItem value="operacoes">📊 Operações</SelectItem>
-                  <SelectItem value="data">📅 Data</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Strategies Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStrategies.map((strategy) => (
-            <StrategyCard
-              key={strategy.magic}
-              strategy={{
-                id: strategy.magic,
-                name: `Magic ${strategy.magic}`,
-                symbol: strategy.ativo,
-                lucroTotal: strategy.lucro_total,
-                assertividade: strategy.assertividade,
-                operacoes: strategy.total_operacoes,
-                status: 'active',
-                color: 'bg-emerald-500',
-                inicio: formatarData(strategy.inicio),
-                vencedoras: strategy.vencedoras,
-                perdedoras: strategy.perdedoras,
-                magic: strategy.magic
-              }}
-              onViewChart={() => handleViewChart(strategy)}
-              onViewStats={() => handleViewStats(strategy)}
-            />
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredStrategies.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 dark:text-gray-600 text-6xl mb-4">📊</div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Nenhuma estratégia encontrada
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Tente ajustar seus filtros ou aguarde o carregamento
-            </p>
-            <Button variant="outline" onClick={() => setFiltro('')}>
-              Limpar Filtros
-            </Button>
-          </div>
+        {filteredStrategies.length === 0 ? (
+          <EmptyState onClearFilters={handleClearFilters} />
+        ) : (
+          <StrategyGrid
+            strategies={filteredStrategies}
+            formatarData={formatarData}
+            onViewChart={handleViewChart}
+            onViewStats={handleViewStats}
+          />
         )}
 
-        {/* Modals */}
         <ChartModal
           isOpen={showChart}
           onClose={() => setShowChart(false)}
