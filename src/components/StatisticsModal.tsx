@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface StatisticsModalProps {
   isOpen: boolean;
@@ -12,13 +11,12 @@ interface StatisticsModalProps {
 }
 
 const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, strategy }) => {
-  const [zoom, setZoom] = useState(1);
-  const [currentImage, setCurrentImage] = useState(0);
-  const [posX, setPosX] = useState(0);
-  const [posY, setPosY] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startY, setStartY] = useState(0);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const images = strategy ? [
     `./img/estatisticas/${strategy.magic}_1.png`,
@@ -26,193 +24,161 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose, stra
     `./img/estatisticas/${strategy.magic}_3.png`
   ] : [];
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.2, 1));
-    if (zoom <= 1.2) {
-      setPosX(0);
-      setPosY(0);
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentImageIndex(0);
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
     }
-  };
-  const handleResetZoom = () => {
-    setZoom(1);
-    setPosX(0);
-    setPosY(0);
-  };
+  }, [isOpen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom <= 1) return;
+    if (scale <= 1) return;
     setIsDragging(true);
-    setStartX(e.clientX - posX);
-    setStartY(e.clientY - posY);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || scale <= 1) return;
+    
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    
+    setPosition({ x: newX, y: newY });
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || zoom <= 1) return;
-    
-    const newX = e.clientX - startX;
-    const newY = e.clientY - startY;
-    
-    setPosX(newX);
-    setPosY(newY);
+  const zoomIn = () => {
+    setScale(prev => Math.min(prev + 0.2, 3));
   };
 
-  const resetImageState = () => {
-    setZoom(1);
-    setPosX(0);
-    setPosY(0);
-    setIsDragging(false);
+  const zoomOut = () => {
+    setScale(prev => {
+      const newScale = Math.max(prev - 0.2, 1);
+      if (newScale === 1) {
+        setPosition({ x: 0, y: 0 });
+      }
+      return newScale;
+    });
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      resetImageState();
+  const resetZoom = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  const previousImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(prev => prev - 1);
+      resetZoom();
     }
-  }, [isOpen, currentImage]);
+  };
+
+  const nextImage = () => {
+    if (currentImageIndex < images.length - 1) {
+      setCurrentImageIndex(prev => prev + 1);
+      resetZoom();
+    }
+  };
 
   if (!strategy) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[80vh] p-0">
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <div className="text-2xl">📷</div>
             Estatísticas: Magic {strategy.magic}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="p-6">
-          {/* Resumo das Estatísticas */}
-          <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="text-2xl font-bold text-emerald-600">
-                {strategy.lucroTotal.toFixed(2)}
-              </div>
-              <div className="text-sm text-gray-500">Lucro Total</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
-                {strategy.assertividade.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Assertividade</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {strategy.operacoes}
-              </div>
-              <div className="text-sm text-gray-500">Operações</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
-                {strategy.vencedoras}
-              </div>
-              <div className="text-sm text-gray-500">Vencedoras</div>
-            </div>
+        <div className="flex-1 relative overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+            <img
+              ref={imageRef}
+              src={images[currentImageIndex]}
+              alt={`Estatística ${currentImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing transition-transform"
+              style={{
+                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                transformOrigin: 'center center'
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onError={(e) => {
+                console.error('Erro ao carregar imagem:', e);
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
           </div>
 
           {/* Controles de Zoom */}
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomOut}
-                disabled={zoom <= 1}
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-gray-500 min-w-[60px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomIn}
-                disabled={zoom >= 3}
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResetZoom}
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <Badge variant="secondary">
-              {currentImage + 1} de {images.length}
-            </Badge>
-          </div>
-
-          {/* Imagem com Zoom */}
-          <div 
-            className="mb-4 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-96 overflow-hidden relative cursor-grab"
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseUp}
-          >
-            <div className="flex justify-center items-center h-full">
-              <img
-                src={images[currentImage]}
-                alt={`Estatística ${currentImage + 1}`}
-                style={{ 
-                  transform: `translate(${posX}px, ${posY}px) scale(${zoom})`,
-                  cursor: isDragging ? 'grabbing' : zoom > 1 ? 'grab' : 'default'
-                }}
-                className="max-w-full h-auto transition-transform duration-200 select-none"
-                draggable={false}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder.svg';
-                }}
-              />
-            </div>
+          <div className="absolute right-4 top-4 flex flex-col gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={zoomIn}
+              disabled={scale >= 3}
+              className="p-2"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={zoomOut}
+              disabled={scale <= 1}
+              className="p-2"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetZoom}
+              className="p-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Navegação */}
-          <div className="flex items-center justify-between">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-2">
             <Button
               variant="outline"
-              onClick={() => {
-                setCurrentImage(prev => Math.max(0, prev - 1));
-              }}
-              disabled={currentImage === 0}
+              size="sm"
+              onClick={previousImage}
+              disabled={currentImageIndex === 0}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-            
-            <div className="flex gap-2">
-              {images.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImage(index)}
-                  className={`w-3 h-3 rounded-full transition-colors ${
-                    index === currentImage
-                      ? 'bg-blue-500'
-                      : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
-            </div>
-            
+            <span className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">
+              {currentImageIndex + 1} de {images.length}
+            </span>
             <Button
               variant="outline"
-              onClick={() => {
-                setCurrentImage(prev => Math.min(images.length - 1, prev + 1));
-              }}
-              disabled={currentImage === images.length - 1}
+              size="sm"
+              onClick={nextImage}
+              disabled={currentImageIndex === images.length - 1}
             >
-              Próxima
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Botão Fechar */}
+          <div className="absolute top-4 left-4">
+            <Button variant="outline" onClick={onClose}>
+              Fechar
             </Button>
           </div>
         </div>

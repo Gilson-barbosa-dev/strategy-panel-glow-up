@@ -12,7 +12,7 @@ import ChartModal from '@/components/ChartModal';
 import StatisticsModal from '@/components/StatisticsModal';
 
 const Index = () => {
-  const { strategies, loading, error, loadHistorico, formatarData } = useStrategies();
+  const { strategies, loading, error, loadHistorico, formatarData, refetch } = useStrategies();
   const [darkMode, setDarkMode] = useState(false);
   const [filtro, setFiltro] = useState('');
   const [ordenacao, setOrdenacao] = useState('lucro_total');
@@ -95,7 +95,7 @@ const Index = () => {
   };
 
   const handleRetry = () => {
-    window.location.reload();
+    refetch();
   };
 
   if (loading) {

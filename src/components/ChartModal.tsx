@@ -109,7 +109,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
           }
         } else {
           // Sem dados
-          ctx.fillStyle = '#999999';
+          ctx.fillStyle = temaEscuro ? '#ffffff' : '#999999';
           ctx.font = '20px Arial';
           ctx.textAlign = 'center';
           ctx.fillText('Nenhum dado disponível', width / 2, height / 2);
@@ -134,19 +134,19 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
           <div className="mb-4 grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-emerald-600">
-                {strategy.lucroTotal.toFixed(2)}
+                {strategy.lucro_total?.toFixed(2) || '0.00'}
               </div>
               <div className="text-sm text-gray-500">Lucro Total</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-blue-600">
-                {strategy.assertividade.toFixed(1)}%
+                {strategy.assertividade?.toFixed(1) || '0.0'}%
               </div>
               <div className="text-sm text-gray-500">Assertividade</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-purple-600">
-                {strategy.operacoes}
+                {strategy.total_operacoes || 0}
               </div>
               <div className="text-sm text-gray-500">Operações</div>
             </div>
