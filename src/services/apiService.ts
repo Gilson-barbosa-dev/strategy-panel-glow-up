@@ -32,9 +32,8 @@ class ApiService {
     this.setConfig({
       baseUrl: 'https://apirobos-production.up.railway.app',
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
   }
@@ -56,7 +55,10 @@ class ApiService {
     // Fallback para sua API
     return {
       baseUrl: 'https://apirobos-production.up.railway.app',
-      headers: {}
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
     };
   }
 
@@ -67,7 +69,6 @@ class ApiService {
     }
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...config.headers,
     };
 
@@ -75,19 +76,29 @@ class ApiService {
       headers['Authorization'] = `Bearer ${config.apiKey}`;
     }
 
-    console.log(`Fazendo requisição para: ${config.baseUrl}${endpoint}`);
+    const url = `${config.baseUrl}${endpoint}`;
+    console.log(`Fazendo requisição para: ${url}`);
     
-    const response = await fetch(`${config.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-      mode: 'cors', // Tentar modo CORS explicitamente
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        mode: 'cors',
+      });
 
-    if (!response.ok) {
-      throw new Error(`Erro na API: ${response.status} ${response.statusText}`);
+      console.log(`Resposta da API: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Dados JSON recebidos:', data);
+      return data;
+    } catch (error) {
+      console.error('Erro na requisição:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async getStrategies(): Promise<Strategy[]> {
@@ -97,25 +108,36 @@ class ApiService {
       
       console.log('Dados recebidos da API:', data);
       
+      if (!Array.isArray(data)) {
+        console.error('API não retornou um array:', data);
+        throw new Error('Formato de dados inválido da API');
+      }
+      
       // Mapear os dados da sua API para o formato esperado pelo painel
-      return data.map((item: any, index: number) => ({
-        id: item.magic || index + 1,
-        name: `Magic ${item.magic}`,
-        symbol: item.ativo || 'N/A',
-        lucroTotal: parseFloat(item.lucro_total) || 0,
-        assertividade: parseFloat(item.assertividade) || 0,
-        operacoes: parseInt(item.total_operacoes) || 0,
-        status: 'active', // Assumindo que todas estão ativas
-        color: this.getRandomColor(),
-        // Manter campos originais para referência
-        magic: item.magic,
-        inicio: item.inicio,
-        ativo: item.ativo,
-        total_operacoes: item.total_operacoes,
-        vencedoras: item.vencedoras,
-        perdedoras: item.perdedoras,
-        lucro_total: item.lucro_total,
-      }));
+      return data.map((item: any, index: number) => {
+        const assertividade = item.total_operacoes > 0 
+          ? (item.vencedoras / item.total_operacoes) * 100 
+          : 0;
+          
+        return {
+          id: item.magic || index + 1,
+          name: `Magic ${item.magic}`,
+          symbol: item.ativo || 'N/A',
+          lucroTotal: parseFloat(item.lucro_total) || 0,
+          assertividade: parseFloat(assertividade.toFixed(2)) || 0,
+          operacoes: parseInt(item.total_operacoes) || 0,
+          status: 'active',
+          color: this.getRandomColor(),
+          // Manter campos originais para referência
+          magic: item.magic,
+          inicio: item.inicio,
+          ativo: item.ativo,
+          total_operacoes: item.total_operacoes,
+          vencedoras: item.vencedoras,
+          perdedoras: item.perdedoras,
+          lucro_total: item.lucro_total,
+        };
+      });
     } catch (error) {
       console.error('Erro detalhado ao buscar estratégias:', error);
       throw error;

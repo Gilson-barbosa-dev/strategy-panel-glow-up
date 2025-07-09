@@ -7,12 +7,11 @@ export const useStrategies = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cache key e tempo como na sua implementação
   const cacheKey = 'estrategias_cache';
   const cacheTimeKey = 'estrategias_cache_time';
   const cacheTime = 60000; // 60 segundos
 
-  // Dados mockados como fallback - usando estrutura similar à sua API
+  // Dados mockados como fallback
   const mockStrategies: Strategy[] = [
     {
       id: 1,
@@ -68,6 +67,7 @@ export const useStrategies = () => {
   ];
 
   const fetchStrategies = async () => {
+    console.log('Iniciando fetchStrategies...');
     setLoading(true);
     setError(null);
 
@@ -94,21 +94,34 @@ export const useStrategies = () => {
       console.log('Tentando conectar com a API...');
       const data = await apiService.getStrategies();
       
-      // Salvar no cache
-      localStorage.setItem(cacheKey, JSON.stringify(data));
-      localStorage.setItem(cacheTimeKey, now.toString());
+      console.log('Dados recebidos da API:', data);
       
-      setStrategies(data);
-      console.log('Estratégias carregadas da API:', data);
+      if (data && data.length > 0) {
+        // Salvar no cache apenas se recebeu dados válidos
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        localStorage.setItem(cacheTimeKey, now.toString());
+        
+        setStrategies(data);
+        console.log('Estratégias carregadas da API com sucesso');
+      } else {
+        console.log('API retornou dados vazios, usando mock data');
+        setStrategies(mockStrategies);
+      }
     } catch (err) {
       console.error('Erro ao carregar estratégias:', err);
       
       // Definir mensagem de erro mais clara
-      if (err instanceof Error && err.message.includes('Failed to fetch')) {
-        setError('Erro de CORS: Sua API precisa permitir requisições do domínio atual');
-      } else {
-        setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      let errorMessage = 'Erro ao conectar com a API';
+      if (err instanceof Error) {
+        if (err.message.includes('Failed to fetch')) {
+          errorMessage = 'Erro de conexão: Verifique se a API está funcionando';
+        } else if (err.message.includes('CORS')) {
+          errorMessage = 'Erro de CORS: API precisa permitir requisições do domínio atual';
+        } else {
+          errorMessage = err.message;
+        }
       }
+      setError(errorMessage);
       
       // Tentar usar cache antigo em caso de erro
       try {
@@ -138,6 +151,6 @@ export const useStrategies = () => {
     loading,
     error,
     refetch: fetchStrategies,
-    isUsingMockData: strategies === mockStrategies,
+    isUsingMockData: strategies.length === 0 || strategies === mockStrategies,
   };
 };
