@@ -31,7 +31,11 @@ class ApiService {
     // Configuração padrão com sua API
     this.setConfig({
       baseUrl: 'https://apirobos-production.up.railway.app',
-      headers: {}
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
     });
   }
 
@@ -71,9 +75,12 @@ class ApiService {
       headers['Authorization'] = `Bearer ${config.apiKey}`;
     }
 
+    console.log(`Fazendo requisição para: ${config.baseUrl}${endpoint}`);
+    
     const response = await fetch(`${config.baseUrl}${endpoint}`, {
       ...options,
       headers,
+      mode: 'cors', // Tentar modo CORS explicitamente
     });
 
     if (!response.ok) {
@@ -88,14 +95,16 @@ class ApiService {
       // Usar o endpoint /dados da sua API
       const data = await this.makeRequest('/dados');
       
+      console.log('Dados recebidos da API:', data);
+      
       // Mapear os dados da sua API para o formato esperado pelo painel
       return data.map((item: any, index: number) => ({
         id: item.magic || index + 1,
         name: `Magic ${item.magic}`,
         symbol: item.ativo || 'N/A',
-        lucroTotal: item.lucro_total || 0,
-        assertividade: item.assertividade || 0,
-        operacoes: item.total_operacoes || 0,
+        lucroTotal: parseFloat(item.lucro_total) || 0,
+        assertividade: parseFloat(item.assertividade) || 0,
+        operacoes: parseInt(item.total_operacoes) || 0,
         status: 'active', // Assumindo que todas estão ativas
         color: this.getRandomColor(),
         // Manter campos originais para referência
@@ -108,7 +117,7 @@ class ApiService {
         lucro_total: item.lucro_total,
       }));
     } catch (error) {
-      console.error('Erro ao buscar estratégias:', error);
+      console.error('Erro detalhado ao buscar estratégias:', error);
       throw error;
     }
   }
