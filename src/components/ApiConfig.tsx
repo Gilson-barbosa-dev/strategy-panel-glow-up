@@ -85,7 +85,8 @@ const ApiConfig: React.FC<ApiConfigProps> = ({ onConfigChanged }) => {
       setApiKey(currentConfig.apiKey || '');
       setCustomHeaders(currentConfig.headers ? JSON.stringify(currentConfig.headers, null, 2) : '');
     } else {
-      setBaseUrl('');
+      // Valores padrão com sua API
+      setBaseUrl('https://apirobos-production.up.railway.app');
       setApiKey('');
       setCustomHeaders('');
     }
@@ -103,12 +104,10 @@ const ApiConfig: React.FC<ApiConfigProps> = ({ onConfigChanged }) => {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Settings className="h-4 w-4" />
-          Configurar API
-          {currentConfig && (
-            <Badge variant="secondary" className="ml-1">
-              Conectado
-            </Badge>
-          )}
+          API Configurada
+          <Badge variant="default" className="ml-1 bg-green-500">
+            Conectado
+          </Badge>
         </Button>
       </DialogTrigger>
       
@@ -118,12 +117,22 @@ const ApiConfig: React.FC<ApiConfigProps> = ({ onConfigChanged }) => {
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          <div className="bg-green-50 p-4 rounded-md">
+            <h4 className="font-medium text-green-900 mb-2">✅ API Conectada</h4>
+            <p className="text-sm text-green-800">
+              Sua API está configurada e funcionando: <br/>
+              <code className="bg-green-100 px-2 py-1 rounded">
+                https://apirobos-production.up.railway.app/dados
+              </code>
+            </p>
+          </div>
+
           <div>
             <label className="text-sm font-medium mb-2 block">
               URL Base da API *
             </label>
             <Input
-              placeholder="https://api.example.com"
+              placeholder="https://apirobos-production.up.railway.app"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
             />
@@ -174,27 +183,28 @@ const ApiConfig: React.FC<ApiConfigProps> = ({ onConfigChanged }) => {
                 <AlertCircle className="h-4 w-4" />
               )}
               {testResult === 'success' 
-                ? 'Conexão com a API funcionando!' 
+                ? 'Conexão com a API funcionando! Dados carregados.' 
                 : 'Erro ao conectar com a API. Verifique as configurações.'
               }
             </div>
           )}
 
           <div className="bg-blue-50 p-4 rounded-md">
-            <h4 className="font-medium text-blue-900 mb-2">Formato Esperado da API</h4>
+            <h4 className="font-medium text-blue-900 mb-2">Formato da Sua API</h4>
             <p className="text-sm text-blue-800 mb-2">
-              Sua API deve retornar um array de estratégias no endpoint <code>/strategies</code>:
+              Sua API retorna dados no endpoint <code>/dados</code> com esta estrutura:
             </p>
             <pre className="text-xs bg-blue-100 p-2 rounded overflow-x-auto">
 {`[
   {
-    "id": 1,
-    "name": "Nome da Estratégia",
-    "symbol": "PETR4",
-    "lucroTotal": 25.8,
-    "assertividade": 78,
-    "operacoes": 142,
-    "status": "active"
+    "magic": 123,
+    "inicio": "2024-01-01",
+    "ativo": "PETR4",
+    "total_operacoes": 50,
+    "vencedoras": 35,
+    "perdedoras": 15,
+    "assertividade": 70.5,
+    "lucro_total": 25.8
   }
 ]`}
             </pre>

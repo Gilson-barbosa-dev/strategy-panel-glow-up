@@ -14,10 +14,26 @@ interface Strategy {
   operacoes: number;
   status: string;
   color: string;
+  // Campos específicos da sua API
+  magic?: number;
+  inicio?: string;
+  ativo?: string;
+  total_operacoes?: number;
+  vencedoras?: number;
+  perdedoras?: number;
+  lucro_total?: number;
 }
 
 class ApiService {
   private config: ApiConfig | null = null;
+
+  constructor() {
+    // Configuração padrão com sua API
+    this.setConfig({
+      baseUrl: 'https://apirobos-production.up.railway.app',
+      headers: {}
+    });
+  }
 
   setConfig(config: ApiConfig) {
     this.config = config;
@@ -33,7 +49,11 @@ class ApiService {
       return this.config;
     }
     
-    return null;
+    // Fallback para sua API
+    return {
+      baseUrl: 'https://apirobos-production.up.railway.app',
+      headers: {}
+    };
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
@@ -65,18 +85,27 @@ class ApiService {
 
   async getStrategies(): Promise<Strategy[]> {
     try {
-      const data = await this.makeRequest('/strategies');
+      // Usar o endpoint /dados da sua API
+      const data = await this.makeRequest('/dados');
       
-      // Normalizar os dados da API para o formato esperado
-      return data.map((item: any) => ({
-        id: item.id || Math.random(),
-        name: item.name || item.strategy_name || 'Estratégia',
-        symbol: item.symbol || item.ticker || 'N/A',
-        lucroTotal: item.lucroTotal || item.profit || item.total_profit || 0,
-        assertividade: item.assertividade || item.accuracy || item.win_rate || 0,
-        operacoes: item.operacoes || item.operations || item.total_operations || 0,
-        status: item.status || (item.active ? 'active' : 'paused'),
-        color: item.color || this.getRandomColor(),
+      // Mapear os dados da sua API para o formato esperado pelo painel
+      return data.map((item: any, index: number) => ({
+        id: item.magic || index + 1,
+        name: `Magic ${item.magic}`,
+        symbol: item.ativo || 'N/A',
+        lucroTotal: item.lucro_total || 0,
+        assertividade: item.assertividade || 0,
+        operacoes: item.total_operacoes || 0,
+        status: 'active', // Assumindo que todas estão ativas
+        color: this.getRandomColor(),
+        // Manter campos originais para referência
+        magic: item.magic,
+        inicio: item.inicio,
+        ativo: item.ativo,
+        total_operacoes: item.total_operacoes,
+        vencedoras: item.vencedoras,
+        perdedoras: item.perdedoras,
+        lucro_total: item.lucro_total,
       }));
     } catch (error) {
       console.error('Erro ao buscar estratégias:', error);

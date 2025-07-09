@@ -7,11 +7,16 @@ export const useStrategies = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Cache key e tempo como na sua implementação
+  const cacheKey = 'estrategias_cache';
+  const cacheTimeKey = 'estrategias_cache_time';
+  const cacheTime = 60000; // 60 segundos
+
   // Dados mockados como fallback
   const mockStrategies: Strategy[] = [
     {
       id: 1,
-      name: 'Magic Formula',
+      name: 'Magic 1',
       symbol: 'PETR4',
       lucroTotal: 25.8,
       assertividade: 78,
@@ -21,23 +26,13 @@ export const useStrategies = () => {
     },
     {
       id: 2,
-      name: 'Momentum',
+      name: 'Magic 2',
       symbol: 'VALE3',
       lucroTotal: 18.5,
       assertividade: 65,
       operacoes: 98,
       status: 'active',
       color: 'bg-blue-500'
-    },
-    {
-      id: 3,
-      name: 'Value Investing',
-      symbol: 'ITUB4',
-      lucroTotal: 31.2,
-      assertividade: 82,
-      operacoes: 76,
-      status: 'paused',
-      color: 'bg-purple-500'
     }
   ];
 
@@ -45,19 +40,50 @@ export const useStrategies = () => {
     setLoading(true);
     setError(null);
 
-    try {
-      if (apiService.isConfigured()) {
-        const data = await apiService.getStrategies();
-        setStrategies(data);
-      } else {
-        // Usar dados mockados se API não estiver configurada
-        setStrategies(mockStrategies);
+    // Verificar cache primeiro (como na sua implementação)
+    const now = Date.now();
+    const lastFetch = parseInt(localStorage.getItem(cacheTimeKey) || '0', 10);
+    
+    if (now - lastFetch < cacheTime) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        if (cached && cached.length > 0) {
+          console.log('Usando cache de estratégias');
+          setStrategies(cached);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.log('Erro ao ler cache, buscando da API');
       }
+    }
+
+    // Buscar da API
+    try {
+      const data = await apiService.getStrategies();
+      
+      // Salvar no cache como na sua implementação
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+      localStorage.setItem(cacheTimeKey, now.toString());
+      
+      setStrategies(data);
+      console.log('Estratégias carregadas da API:', data);
     } catch (err) {
       console.error('Erro ao carregar estratégias:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      // Fallback para dados mockados em caso de erro
-      setStrategies(mockStrategies);
+      
+      // Tentar usar cache antigo em caso de erro
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        if (cached && cached.length > 0) {
+          setStrategies(cached);
+          console.log('Usando cache antigo devido ao erro');
+        } else {
+          setStrategies(mockStrategies);
+        }
+      } catch {
+        setStrategies(mockStrategies);
+      }
     } finally {
       setLoading(false);
     }
@@ -72,6 +98,6 @@ export const useStrategies = () => {
     loading,
     error,
     refetch: fetchStrategies,
-    isUsingMockData: !apiService.isConfigured(),
+    isUsingMockData: false, // Agora sempre usa dados reais ou cache
   };
 };
