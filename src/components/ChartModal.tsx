@@ -15,6 +15,9 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
 
   useEffect(() => {
     if (isOpen && strategy && canvasRef.current) {
+      // Check if dark mode is active
+      const temaEscuro = document.documentElement.classList.contains('dark');
+      
       // Simular dados do gráfico
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
@@ -25,19 +28,28 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
         const width = canvasRef.current.width;
         const height = canvasRef.current.height;
         
+        // Set colors based on theme
+        const corTexto = temaEscuro ? "#ffffff" : "#111111";
+        const corLinha = temaEscuro ? "#00ffb3" : "#00b89c";
+        const corFundo = temaEscuro ? '#0e0e0e' : '#ffffff';
+        
+        // Fill background
+        ctx.fillStyle = corFundo;
+        ctx.fillRect(0, 0, width, height);
+        
         // Desenhar gráfico de linha simples
-        ctx.strokeStyle = strategy.color.replace('bg-', '').replace('-500', '');
+        ctx.strokeStyle = corLinha;
         ctx.lineWidth = 2;
         ctx.beginPath();
         
-        // Gerar dados mockados
+        // Gerar dados mockados baseados na estratégia
         const dataPoints = 20;
-        const baseValue = strategy.lucroTotal;
+        const baseValue = strategy.lucroTotal || strategy.lucro_total || 0;
         
         for (let i = 0; i < dataPoints; i++) {
           const x = (i / (dataPoints - 1)) * width;
           const variance = (Math.random() - 0.5) * 10;
-          const y = height / 2 + (baseValue + variance) * 2;
+          const y = height / 2 - (baseValue + variance) * 2;
           
           if (i === 0) {
             ctx.moveTo(x, y);
@@ -49,7 +61,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
         ctx.stroke();
         
         // Adicionar grid
-        ctx.strokeStyle = '#e5e7eb';
+        ctx.strokeStyle = temaEscuro ? '#333' : '#e5e7eb';
         ctx.lineWidth = 1;
         
         // Linhas horizontais
@@ -80,8 +92,8 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${strategy.color}`} />
-            Gráfico de Lucro - {strategy.name}
+            <div className={`w-3 h-3 rounded-full ${strategy.color || 'bg-blue-500'}`} />
+            Gráfico de Lucro - {strategy.name || `Magic ${strategy.magic}`}
           </DialogTitle>
         </DialogHeader>
         
@@ -89,19 +101,19 @@ const ChartModal: React.FC<ChartModalProps> = ({ isOpen, onClose, strategy }) =>
           <div className="mb-4 grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-emerald-600">
-                {strategy.lucroTotal.toFixed(1)}%
+                {(strategy.lucroTotal || strategy.lucro_total || 0).toFixed(1)}%
               </div>
               <div className="text-sm text-gray-500">Lucro Atual</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-blue-600">
-                {strategy.assertividade}%
+                {strategy.assertividade || 0}%
               </div>
               <div className="text-sm text-gray-500">Assertividade</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-purple-600">
-                {strategy.operacoes}
+                {strategy.operacoes || strategy.total_operacoes || 0}
               </div>
               <div className="text-sm text-gray-500">Operações</div>
             </div>
